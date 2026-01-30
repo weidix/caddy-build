@@ -21,7 +21,9 @@ jobs:
           go-version: "1.22"
 
       - name: Install xcaddy
-        run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+        run: |
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
       - name: Check and build Caddy (glibc)
         id: build_glibc
@@ -50,7 +52,7 @@ jobs:
             -v "$PWD:/workspace" \
             -w /workspace \
             golang:1.22-alpine \
-            sh -c "apk add --no-cache git curl bash && /usr/local/go/bin/go version && /usr/local/go/bin/go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && bash ./scripts/check_and_build.sh"
+            sh -c "apk add --no-cache git curl bash && /usr/local/go/bin/go version && GOBIN=/usr/local/bin /usr/local/go/bin/go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && bash ./scripts/check_and_build.sh"
 
       - name: Generate checksums
         if: steps.build_glibc.outputs.build_performed == 'true'
