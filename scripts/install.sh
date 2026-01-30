@@ -15,7 +15,7 @@ p(){ # msg def
 yn(){ local a; a="$(p "$1 (y/n)" "${2:-y}")"; case "$a" in y|Y|yes|YES) return 0;; *) return 1;; esac; }
 
 [ "$(id -u)" = 0 ] || { echo "root 运行" >&2; exit 1; }
-apk add --no-cache ca-certificates curl file tar >/dev/null
+apk add --no-cache ca-certificates curl tar >/dev/null
 
 arch() {
   case "$(uname -m)" in
@@ -103,17 +103,12 @@ fi
 
 [ -n "$tag" ] || { echo "无法获取版本信息" >&2; exit 1; }
 
-asset_versioned="caddy-$tag-$VARIANT"
-asset_plain="caddy-$VARIANT"
+asset_versioned="caddy-$tag-$VARIANT.tar.gz"
 
 asset_url="$(echo "$release_json" | sed -n 's/^[[:space:]]*"browser_download_url":[[:space:]]*"\([^"]\+\)".*/\1/p' \
   | grep -E "/${asset_versioned}$" | head -n 1)"
-if [ -z "$asset_url" ]; then
-  asset_url="$(echo "$release_json" | sed -n 's/^[[:space:]]*"browser_download_url":[[:space:]]*"\([^"]\+\)".*/\1/p' \
-    | grep -E "/${asset_plain}$" | head -n 1)"
-fi
 
-[ -n "$asset_url" ] || { echo "未找到下载资源: $asset_versioned（或 $asset_plain）" >&2; exit 1; }
+[ -n "$asset_url" ] || { echo "未找到下载资源: $asset_versioned" >&2; exit 1; }
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 out="$tmp/caddy.dl"
@@ -121,17 +116,13 @@ out="$tmp/caddy.dl"
 echo "下载: $asset_url" >&2
 curl -fL --retry 3 --retry-delay 1 --connect-timeout 10 -o "$out" "$asset_url"
 
-ft="$(file -b "$out" || true)"
-if echo "$ft" | grep -qi 'ELF'; then
-  rc-service caddy stop >/dev/null 2>&1 || true
-  install -m 0755 "$out" "$CADDY_BIN"
-elif echo "$ft" | grep -qiE 'gzip|compressed'; then
+if tar -tzf "$out" >/dev/null 2>&1; then
   tar -xzf "$out" -C "$tmp"
   [ -f "$tmp/caddy" ] || { echo "包里没找到 caddy" >&2; exit 1; }
   rc-service caddy stop >/dev/null 2>&1 || true
   install -m 0755 "$tmp/caddy" "$CADDY_BIN"
 else
-  echo "下载内容不对(不是 ELF/tar.gz)。前200字节：" >&2
+  echo "下载内容不对(不是 tar.gz)。前200字节：" >&2
   head -c 200 "$out" >&2; echo >&2
   exit 1
 fi

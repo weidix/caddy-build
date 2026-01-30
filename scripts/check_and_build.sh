@@ -64,10 +64,15 @@ if [ -f "$VERSION_FILE" ]; then
   current_version="$(cat "$VERSION_FILE" | tr -d '[:space:]')"
 fi
 
-output_name="${OUTPUT_NAME:-caddy}"
-output_path="$BIN_DIR/$output_name"
+output_variant="${OUTPUT_VARIANT:-}"
+versioned_suffix=""
+if [ -n "$output_variant" ]; then
+  versioned_suffix="-$output_variant"
+fi
+versioned_name="${OUTPUT_VERSIONED_NAME:-caddy-$latest_version$versioned_suffix}"
+archive_path="$BIN_DIR/$versioned_name.tar.gz"
 
-if [ "$current_version" = "$latest_version" ] && [ -x "$output_path" ]; then
+if [ "$current_version" = "$latest_version" ] && [ -f "$archive_path" ]; then
   echo "Caddy is up to date ($latest_version). No build needed."
   write_output "build_performed=false"
   exit 0

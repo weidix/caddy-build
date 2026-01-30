@@ -10,6 +10,7 @@ VERSION_FILE="${VERSION_FILE:-$DEFAULT_VERSION_FILE}"
 OUTPUT_NAME="${OUTPUT_NAME:-caddy}"
 OUTPUT_VARIANT="${OUTPUT_VARIANT:-}"
 OUTPUT_VERSIONED_NAME="${OUTPUT_VERSIONED_NAME:-}"
+KEEP_BINARY="${KEEP_BINARY:-0}"
 
 mkdir -p "$BIN_DIR" "$STATE_DIR"
 
@@ -69,17 +70,28 @@ for p in "${plugins[@]}"; do
   echo "  $p"
 done
 
-output_path="$BIN_DIR/$OUTPUT_NAME"
+versioned_suffix=""
+if [ -n "$OUTPUT_VARIANT" ]; then
+  versioned_suffix="-$OUTPUT_VARIANT"
+fi
+versioned_name="${OUTPUT_VERSIONED_NAME:-caddy-$record_version$versioned_suffix}"
+archive_name="$versioned_name.tar.gz"
+
+build_dir="$(mktemp -d)"
+cleanup() {
+  rm -rf "$build_dir"
+}
+trap cleanup EXIT
+
+output_path="$build_dir/$OUTPUT_NAME"
 xcaddy build "$target_version" --output "$output_path" "${with_args[@]}"
 
 echo "$record_version" > "$VERSION_FILE"
-if [ "$record_version" != "latest" ]; then
-  versioned_suffix=""
-  if [ -n "$OUTPUT_VARIANT" ]; then
-    versioned_suffix="-$OUTPUT_VARIANT"
-  fi
-  versioned_name="${OUTPUT_VERSIONED_NAME:-caddy-$record_version$versioned_suffix}"
-  cp "$output_path" "$BIN_DIR/$versioned_name"
+
+tar -czf "$BIN_DIR/$archive_name" -C "$build_dir" "$OUTPUT_NAME"
+
+if [ "$KEEP_BINARY" = "1" ] || [ "$KEEP_BINARY" = "true" ]; then
+  install -m 0755 "$output_path" "$BIN_DIR/$versioned_name"
 fi
 
-echo "Build complete: $output_path"
+echo "Build complete: $BIN_DIR/$archive_name"

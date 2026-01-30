@@ -9,7 +9,7 @@
 - 拉取 Caddy 最新稳定版标签
 - 对比本地记录版本，发现更新后自动编译
 - 使用 `plugins.txt` 统一维护插件列表
-- 产出二进制到 `bin/`，并记录版本到 `state/`
+- 产出带版本号的 `tar.gz` 到 `bin/`，并记录版本到 `state/`
 
 ## 依赖
 - Go 1.21+（建议）
@@ -39,7 +39,7 @@ plugins.txt
 ```
 
 ## Alpine 一键安装脚本
-适用于 Alpine/OpenRC 环境，从本仓库 GitHub Release 下载预编译的 musl 二进制（插件固定为本仓库构建配置），并可自动安装/更新 OpenRC 服务。
+适用于 Alpine/OpenRC 环境，从本仓库 GitHub Release 下载预编译的 tar.gz 包（musl/glibc，插件固定为本仓库构建配置），并可自动安装/更新 OpenRC 服务。
 
 使用 curl 直接执行（需要 root）：
 ```bash
@@ -80,7 +80,7 @@ example.com {
 ├── scripts/
 │   ├── build.sh          # 手动编译
 │   └── check_and_build.sh# 检查更新并编译
-├── bin/                  # 输出二进制（自动生成）
+├── bin/                  # 输出 tar.gz（自动生成）
 └── state/                # 版本记录（自动生成）
 ```
 
@@ -100,8 +100,8 @@ example.com {
 输出：
 - Release 标签与 Caddy 版本一致
 - Release 附件：
-  - `caddy-glibc` / `caddy-<version>-glibc`
-  - `caddy-musl` / `caddy-<version>-musl`
+  - `caddy-<version>-glibc.tar.gz`
+  - `caddy-<version>-musl.tar.gz`
   - `SHA256SUMS.txt`
 
 ## 备注
