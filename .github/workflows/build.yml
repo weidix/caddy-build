@@ -18,7 +18,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.25"
 
       - name: Install xcaddy
         run: |
@@ -51,7 +51,7 @@ jobs:
             -e PATH=/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
             -v "$PWD:/workspace" \
             -w /workspace \
-            golang:1.22-alpine \
+            golang:1.25-alpine \
             sh -c "apk add --no-cache git curl bash && /usr/local/go/bin/go version && GOBIN=/usr/local/bin /usr/local/go/bin/go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && bash ./scripts/check_and_build.sh"
 
       - name: Generate checksums
