@@ -1,0 +1,3 @@
+# One module per line. You may append @version if needed.
+github.com/caddy-dns/cloudflare
+github.com/mholt/caddy-l4

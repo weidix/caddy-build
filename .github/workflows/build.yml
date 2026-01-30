@@ -1,0 +1,70 @@
+name: Build Caddy
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Install xcaddy
+        run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+
+      - name: Check and build Caddy (glibc)
+        id: build_glibc
+        env:
+          CHECK_RELEASE: "1"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTPUT_NAME: caddy-glibc
+          OUTPUT_VARIANT: glibc
+          VERSION_FILE: state/caddy-version-glibc.txt
+        run: ./scripts/check_and_build.sh
+
+      - name: Check and build Caddy (musl)
+        if: steps.build_glibc.outputs.build_performed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTPUT_NAME: caddy-musl
+          OUTPUT_VARIANT: musl
+        run: |
+          docker run --rm \
+            -e GITHUB_TOKEN \
+            -e OUTPUT_NAME \
+            -e OUTPUT_VARIANT \
+            -e VERSION_FILE=state/caddy-version-musl.txt \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            golang:1.22-alpine \
+            sh -lc "apk add --no-cache git curl bash && go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest && bash ./scripts/check_and_build.sh"
+
+      - name: Generate checksums
+        if: steps.build_glibc.outputs.build_performed == 'true'
+        run: |
+          cd bin
+          sha256sum caddy* > SHA256SUMS.txt
+
+      - name: Create GitHub release
+        if: steps.build_glibc.outputs.build_performed == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.build_glibc.outputs.latest_version }}
+          name: Caddy ${{ steps.build_glibc.outputs.latest_version }}
+          files: |
+            bin/caddy-glibc
+            bin/caddy-musl
+            bin/caddy-${{ steps.build_glibc.outputs.latest_version }}-glibc
+            bin/caddy-${{ steps.build_glibc.outputs.latest_version }}-musl
+            bin/SHA256SUMS.txt
