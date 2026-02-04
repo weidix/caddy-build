@@ -15,7 +15,7 @@ p(){ # msg def
 yn(){ local a; a="$(p "$1 (y/n)" "${2:-y}")"; case "$a" in y|Y|yes|YES) return 0;; *) return 1;; esac; }
 
 [ "$(id -u)" = 0 ] || { echo "root 运行" >&2; exit 1; }
-apk add --no-cache ca-certificates curl tar >/dev/null
+apk add --no-cache ca-certificates curl tar libcap >/dev/null
 
 arch() {
   case "$(uname -m)" in
@@ -126,6 +126,11 @@ fi
 
 new_ver="$("$CADDY_BIN" version 2>/dev/null | awk '{print $1}' || true)"
 echo "已安装/更新: $CADDY_BIN 版本: ${new_ver:-unknown}" >&2
+
+# Allow binding to :80 when running as non-root (OpenRC uses caddy user)
+if command -v setcap >/dev/null 2>&1; then
+  setcap cap_net_bind_service=+ep "$CADDY_BIN" >/dev/null 2>&1 || true
+fi
 
 # OpenRC（写一次即可，后续更新只换二进制也行）
 if yn "安装/更新 OpenRC 服务" "y"; then
