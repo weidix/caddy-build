@@ -83,30 +83,27 @@ VER="${VER}"
 VARIANT="${VARIANT}"
 EOF
 
-auth_header=()
-if [ -n "${GITHUB_TOKEN:-}" ]; then
-  auth_header=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
-fi
+get_latest_tag() {
+  local loc
+  loc="$(curl -fsSLI "https://github.com/$REPO_SLUG/releases/latest" \
+    | awk -F': ' 'tolower($1)=="location"{print $2}' \
+    | tail -n 1 | tr -d '\r')"
+  [ -n "$loc" ] || return 1
+  printf "%s" "${loc##*/}"
+}
 
-release_json=""
 tag=""
 if [ -n "$VER" ]; then
-  release_json="$(curl -fsSL "${auth_header[@]}" \
-    "https://api.github.com/repos/$REPO_SLUG/releases/tags/$VER")"
   tag="$VER"
 else
-  release_json="$(curl -fsSL "${auth_header[@]}" \
-    "https://api.github.com/repos/$REPO_SLUG/releases/latest")"
-  tag="$(echo "$release_json" | sed -n 's/^[[:space:]]*"tag_name":[[:space:]]*"\([^"]\+\)".*/\1/p' | head -n 1)"
+  tag="$(get_latest_tag || true)"
   VER="$tag"
 fi
 
 [ -n "$tag" ] || { echo "无法获取版本信息" >&2; exit 1; }
 
 asset_versioned="caddy-$tag-$VARIANT.tar.gz"
-
-asset_url="$(echo "$release_json" | sed -n 's/^[[:space:]]*"browser_download_url":[[:space:]]*"\([^"]\+\)".*/\1/p' \
-  | grep -E "/${asset_versioned}$" | head -n 1)"
+asset_url="https://github.com/$REPO_SLUG/releases/download/$tag/$asset_versioned"
 
 [ -n "$asset_url" ] || { echo "未找到下载资源: $asset_versioned" >&2; exit 1; }
 
